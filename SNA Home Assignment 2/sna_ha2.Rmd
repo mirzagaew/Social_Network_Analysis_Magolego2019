@@ -1,0 +1,279 @@
+---
+title: "Social Network Analysis <br/> Home Assignment 2"
+author: '{Your Name}'
+date: "due date - 22.05.2017 23:59"
+output:
+  word_document:
+    toc: yes
+  pdf_document:
+    toc: yes
+  html_document:
+    toc: yes
+---
+# Graph models. Centrality metrics
+Please send your reports to hse.ntwks@gmail.com with the subject of of the following structure:<br/>
+*[MAGOLEGO SNA 2017] {Mirzaaghayev} {Ramil} HA{2}*
+
+Late submission policy: -1 point per day
+
+Use this file as a template for your report.\
+Support your computations with figures and comments. Send ONLY .Rmd versions of your report with datasets for your social network. Anonymize your data if necessary.
+
+```{r, echo=FALSE}
+library(igraph)
+library(rgexf)
+library(R.matlab)
+```
+
+
+## Task 1. Your social network
+
+For the first task, you have to load your [vk.com](http://vk.com) network. Please follow the instructions posted on the course wiki or user [VK Application](vk.com/app3861133). For [FB](http://facebook.com) users try to use [NetVizz](http://thepoliticsofsystems.net/2010/03/netvizz-facebook-to-gephi/). If you did it correctly, you should have a GraphML file with your own network. Read it to R:
+
+```{r}
+## Put your code here
+g = gexf.to.igraph(read.gexf("vk-friends-266010761.gexf"))
+
+z = get.adjacency(g)
+z.names = 1:vcount(g)
+colnames(z) = z.names
+rownames(z) = colnames(z)
+g = graph.adjacency(z, add.colnames = TRUE)
+
+V(g)$label.cex = 0.5
+
+plot(g)
+```
+
+### 1. Degree distribution
+
+First, plot degree distribution of your network in log-log scales:
+
+```{r}
+## Put your code here
+p = degree.distribution(g, cumulative = FALSE)
+pdf = p[which(p>0)]
+
+plot(pdf, log="xy", main="PDF of the My VK Network", xlab="Degree", ylab="Frequency")
+#KS test 
+cdf = cumsum(pdf)
+x = as.numeric(1:max(degree(g)))+1
+g.fit = power.law.fit(x,implementation = "plfit")
+x_min = g.fit$xmin
+alpha = g.fit$alpha
+
+func_CDF = function(x) return(1-(x_min^(alpha-1))*x^(1-alpha))
+plot(cdf, log="xy", main="CDF of the My VK Network", xlab="Degree", ylab="Frequency")
+par(new=TRUE)
+curve(func_CDF, from=x_min, to = max(x), n=length(x),log="xy", col="red", add=FALSE, xlab = "", ylab = "", axes=FALSE)
+legend("bottomright", c("alpha = ", alpha))
+
+```
+
+Is there any correspondence between actual degree distribution of your network and the Power Law distribution? If not, explain why.
+
+There is not a good correspondance between the theoretical degree distribution and empirical data. This is due to the nature of empirical data. 
+
+Now, let's see how it would look if it was random. Produce Erdos-Renyi graph matching your real network (same number of nodes and same average degree). Compare it with your degree distribution.
+
+```{r}
+## Put your code here
+er = erdos.renyi.game(n=vcount(g), p.or.m = ecount(g), type=c("gnm"))
+pdf.er = degree.distribution(er,cumulative = FALSE)
+cdf.er = cumsum(pdf.er)
+
+plot(pdf, log="xy", main="My VK Network vs Erdos Reyni Game", xlab="Degree", ylab="Frequency")
+par(new=TRUE)
+plot(pdf.er, log="xy",col="red",  xlab="", ylab="", add=FALSE, axes=FALSE)
+legend("left", c("ER Game","VK Network"), col = c("red", "black"), lty=1)
+
+```
+
+*Put your comments here*
+
+### 2. Compute centrality metrics
+
+Compute for your network: 
+
+* degree centrality
+
+* closeness centrality
+
+* betweenness centrality
+
+* eigenvector centrality
+
+* Bonacich power centrality
+
+* Alpha centrality
+
+
+```{r}
+## Put your code here
+# 1. degree centrality 
+deg = degree(g)
+
+# 2. closeness centrality
+close = closeness(g)
+
+# 3. betweenness centrality
+btw = betweenness(g)
+
+# 4.eigenvector centrality
+eig = eigen_centrality(g)
+
+# 5.Bonacich power centrality
+bonc = bonpow(g)
+
+# 6. Alpha centrality
+alf = alpha.centrality(g)
+```
+
+Output six plots corresponding to six centrality metrics you've computed: 
+
+* Use first names of your friends as node labels on the graph (you may hide this information if you wish -- change it by integer ID)
+* Keep the same layout of the network
+* Make node sizes and colours proportional to the respective centrality metrics
+
+Hint: If you get stuck, lab 4 script might be helpful.
+
+```{r}
+## Put your code here
+
+z = delete.vertices(g, degree(g)==0 )
+
+scl = function(c) return(scale(c, center = min(c), scale = max(c) - min(c)))
+
+color.palette = colorRampPalette(c('red','blue'))
+colors = color.palette(50)[as.numeric(cut(deg, breaks = 50))]
+
+plot(z, layout=layout.fruchterman.reingold(z), vertex.color=colors, vertex.size=scl(deg), main='Degree Centrality')
+
+
+plot(z, layout=layout.fruchterman.reingold(z), vertex.color=colors, vertex.size=scl(close), main='Closeness Centrality')
+
+plot(z, layout=layout.fruchterman.reingold(z), vertex.color=colors, vertex.size=scl(btw), main='Betweenness Centrality')
+
+plot(z, layout=layout.fruchterman.reingold(z), vertex.color=colors, vertex.size=scl(alf), main='Alpha Centrality')
+
+plot(z, layout=layout.fruchterman.reingold(z), vertex.color=colors, vertex.size=scl(eig$vector), main='Eigenvector Centrality')
+
+plot(z, layout=layout.fruchterman.reingold(z), vertex.color=colors, vertex.size=scl(bonc), main='Bonacich Centrality')
+```
+
+Now, output top ten nodes in each ranking. Again, print only first names in your table to keep privacy:
+
+```{r}
+## Put your code here
+top10 = function(c) return(which(c > sort(c)[ length(c)-10 ]))
+
+data.frame(Rank=1:10, Degree_centrality=top10(deg))
+data.frame(Rank=1:10, Closeness_centrality=top10(close))
+data.frame(Rank=1:10, Bonacich_centrality=top10(bonc))
+data.frame(Rank=1:10, Alpha_centrality=top10(alf))
+data.frame(Rank=1:10, Betweenness_centrality=top10(btw))
+data.frame(Rank=1:10, Eigenvector_centrality=top10(eig$vector))
+
+```
+
+*When I checked for 31st node it is my friend Nicko, he is my close friend and we communicate a lot and also he is a public figure. It is interesting seeing him both in degree centrality and eigenvector centrality in the top rank*
+
+
+## Task 2. Flickr network
+
+In the second task, you will work with a large directed graph. 
+
+Please download [flickr.mat](http://www.hse.ru/data/2015/05/01/1098247366/flickr.mat) 
+
+*Data contains sparse matrix A and list of user names. This is a denser part of the Flickr photo sharing site friendship graph from 2006. Edge direction corresponds to friendship requests (following). Some of the links are reciprocal, others not*
+
+It's a Matlab file. How to deal with it in R? There is a package `R.matlab`. Please install it and call `library(R.matlab)`
+
+Now use `readMat` function to read the file and extract adjacency matrix and a list of user names:
+
+```{r}
+flickr = readMat("flickr.mat")
+fmatrix=as.matrix(flickr[1]$A)
+fnames=flickr[2]$names
+
+f = graph.adjacency(fmatrix)
+```
+
+If you have trouble loading large mat file on your laptop --- try to use HSE computer classes with installed R+RStudio.
+
+Look at user names. You might want to remove spaces from the names. Use a function `gsub` to remove them:
+
+```{r, eval=FALSE}
+fnames=gsub(" ", "", fnames)
+```
+
+Now create a graph, output the number of vertices and edges:
+
+```{r}
+## Put your code here
+
+
+paste("Number of vertices", vcount(f))
+paste("Number of edges", ecount(f))
+```
+
+Compute in- and out- degree centralities, PageRank, Hubs and Authorities for this network:
+
+```{r}
+## Put your code here
+f.deg.in = degree(f, mode="in")
+f.deg.out = degree(f, mode="out")
+f.pg.rnk = page.rank(f)
+f.hubs = hub.score(f)
+f.auth = authority.score(f)
+```
+
+Print top ten names in each ranking:
+
+```{r}
+## Put your code here
+data.frame(Degree_in=top10(f.deg.in), Names = fnames[top10(f.deg.in)])
+data.frame(DEgree_out=top10(f.deg.out), Names = fnames[top10(f.deg.out)])
+data.frame(Page_rank=top10(f.pg.rnk$vector), Names = fnames[top10(f.pg.rnk$vector)])
+data.frame(Hub_score=top10(f.hubs$vector), Names=fnames[top10(f.hubs$vector)])
+data.frame(Authority_score=top10(f.auth$vector), Names=fnames[top10(f.auth$vector)])
+
+```
+
+Produce the following plots:
+
+* In-degree centralities versus out-degree centralities
+
+* In-degree centralities versus authorities
+
+* Out-degree centralities versus hubs
+
+* Hubs versus authorities
+
+* PageRank versus hubs
+
+* PageRank versus authorities
+
+
+```{r}
+## Put your code here
+plot(f.deg.in, f.deg.out, xlab = "Degree in centrality", ylab = "Degree out centrality", col="Green", main="In-degree centralities versus out-degree centralities")
+
+plot(f.deg.in, f.auth$vector, xlab = "Degree in centrality", ylab = "Authority", col="Blue", main="In-degree centralities versus authorities")
+
+plot(f.deg.out, f.hubs$vector, xlab = "Degree out centrality", ylab = "Hubs", col="Grey", main="Out-degree centralities versus hubs")
+
+plot(f.hubs$vector, f.auth$vector, xlab = "Hubs", ylab = "Authority", col="Red", main="Hubs versus authorities")
+
+plot(f.pg.rnk$vector, f.auth$vector, xlab = "Page Rank", ylab = "Authority", col="Cyan", main="PageRank versus authorities")
+
+plot(f.pg.rnk$vector, f.hubs$vector, xlab = "Page Rank", ylab = "Authority", col="Brown", main="PageRank versus hubs")
+
+plot(f.deg.in, f.pg.rnk$vector)
+```
+
+*One can observe a strong correlation between,
+1. Degree in centrality and Authority
+2. Hubs and Degree out
+3. Authority and Page rank
+This also implies that Degree-in and Page rank also should be strongly correlated which was also plotted*

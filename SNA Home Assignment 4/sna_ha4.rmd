@@ -1,0 +1,274 @@
+---
+title: "Social Network Analysis <br/> Home Assignment 4"
+author: '{Ramil Mirzaaghayev}'
+date: "due date - 12.06.2016 23:59"
+output:
+  word_document:
+    toc: yes
+  html_document:
+    toc: yes
+  pdf_document:
+    toc: yes
+---
+# Network Epidemics
+
+Please send your reports to hse.ntwks@gmail.com with the subject of of the following structure:<br/>
+*[MAGOLEGO SNA 2017] {LastName} {First Name} HW{Number}*
+
+Late submission policy: -2 points per day
+
+Use this file as a template for your report.\
+Support your computations with figures and comments. Send ONLY .Rmd versions of your report.
+
+```{r}
+library(igraph)
+```
+## SIR Model
+
+You need to perform epidemic SIR model on different types of networks:
+Try different parameters for network generation
+```{r}
+gl <- list()
+gl$ba <- barabasi.game(n = 100,m = 12 , directed=FALSE)
+
+gl$er <- erdos.renyi.game(n = 250, p.or.m = 0.02, type=c("gnp"))
+
+gl$ws <- watts.strogatz.game(dim = 1, size = 1000, nei = 3, p = 0.01)
+
+
+``` 
+
+Moreover perform modeling on real peer-to-peer network [here](https://www.hse.ru/data/2016/04/21/1130159900/Net.txt)
+```{r}
+gl$nt = read.graph("Net.txt", directed=FALSE)
+
+vc = vcount(gl$nt)
+ec = ecount(gl$nt)
+
+paste("Number of edges is", ec)
+paste("Number of vertices is", vc)
+
+gl$ba = barabasi.game(n=vc, m=2*ec/vc, directed = FALSE)
+gl$er = erdos.renyi.game(n = vc, p.or.m = ec, type=c("gnm"))
+gl$ws = watts.strogatz.game(dim = 1, size = vc, nei = 3, p = 0.001)
+
+```
+
+
+Your goal is to perform a research on epidemics:
+Use different values of parameters listed below
+
+```{r}
+
+sim = lapply(gl, sir, beta=5, gamma=9, no.sim=200)
+
+x.max <- max(sapply(sapply(sim, time_bins), max))
+y.max <- 1.05 * max(sapply(sapply(sim, function(x) median(x)[["NI"]]), max, na.rm=TRUE))
+plot(time_bins(sim$er), median(sim$er)[["NI"]], type="l", lwd=2, col="blue", xlim=c(0, x.max), ylim=c(0, y.max), xlab="Time", ylab=expression(N[I](t)))
+lines(time_bins(sim$ba), median(sim$ba)[["NI"]], lwd=2, col="gold")
+lines(time_bins(sim$ws), median(sim$ws)[["NI"]],lwd=2, col="red")
+lines(time_bins(sim$nt), median(sim$nt)[["NI"]],lwd=2, col="green")
+legend("topright", c("ER", "BA", "WS", "NT"),col=c("blue", "gold", "red", "green"), lty=1)
+title("NI [beta=5, gamma=9, ntrials = 200]")
+
+x.max <- max(sapply(sapply(sim, time_bins), max))
+y.max <- 1.05 * max(sapply(sapply(sim, function(x) median(x)[["NS"]]), max, na.rm=TRUE))
+plot(time_bins(sim$er), median(sim$er)[["NS"]], type="l", lwd=2, col="blue", xlim=c(0, x.max), ylim=c(0, y.max), xlab="Time", ylab=expression(N[S](t)))
+lines(time_bins(sim$ba), median(sim$ba)[["NS"]], lwd=2, col="gold")
+lines(time_bins(sim$ws), median(sim$ws)[["NS"]],lwd=2, col="red")
+lines(time_bins(sim$nt), median(sim$nt)[["NS"]],lwd=2, col="green")
+legend("topright", c("ER", "BA", "WS", "NT"),col=c("blue", "gold", "red", "green"), lty=1)
+title("NS [beta=5, gamma=9, ntrials = 200]")
+
+
+x.max <- max(sapply(sapply(sim, time_bins), max))
+y.max <- 1.05 * max(sapply(sapply(sim, function(x) median(x)[["NR"]]), max, na.rm=TRUE))
+plot(time_bins(sim$er), median(sim$er)[["NR"]], type="l", lwd=2, col="blue", xlim=c(0, x.max), ylim=c(0, y.max), xlab="Time", ylab=expression(N[R](t)))
+lines(time_bins(sim$ba), median(sim$ba)[["NR"]], lwd=2, col="gold")
+lines(time_bins(sim$ws), median(sim$ws)[["NR"]],lwd=2, col="red")
+lines(time_bins(sim$nt), median(sim$nt)[["NR"]],lwd=2, col="green")
+legend("topright", c("ER", "BA", "WS", "NT"),col=c("blue", "gold", "red", "green"), lty=1)
+title("NR [beta=5, gamma=9, ntrials = 200]")
+
+x.max <- max(sapply(sapply(sim, time_bins), max))
+y.max <- 1.05 * max(sapply(sapply(sim, function(x) median(x)[["NR"]]), max, na.rm=TRUE))
+plot(time_bins(sim$er), median(sim$er)[["NS"]], type="l", lwd=2, col="blue", xlim=c(0, x.max), ylim=c(0, y.max), xlab="Time", ylab=expression(N(t)))
+lines(time_bins(sim$er), median(sim$er)[["NI"]], lwd=2, col="gold")
+lines(time_bins(sim$er), median(sim$er)[["NR"]],lwd=2, col="red")
+legend("topright", c("NS", "NI", "NR"),col=c("blue", "gold", "red"), lty=1)
+title("Erdos Reyni game [beta=5, gamma=9, ntrials = 200]")
+
+x.max <- max(sapply(sapply(sim, time_bins), max))
+y.max <- 1.05 * max(sapply(sapply(sim, function(x) median(x)[["NR"]]), max, na.rm=TRUE))
+plot(time_bins(sim$ba), median(sim$ba)[["NS"]], type="l", lwd=2, col="blue", xlim=c(0, x.max), ylim=c(0, y.max), xlab="Time", ylab=expression(N(t)))
+lines(time_bins(sim$ba), median(sim$ba)[["NI"]], lwd=2, col="gold")
+lines(time_bins(sim$ba), median(sim$ba)[["NR"]],lwd=2, col="red")
+legend("topright", c("NS", "NI", "NR"),col=c("blue", "gold", "red"), lty=1)
+title("Barabasi Game [beta=5, gamma=9, ntrials = 200]")
+
+x.max <- max(sapply(sapply(sim, time_bins), max))
+y.max <- 1.05 * max(sapply(sapply(sim, function(x) median(x)[["NR"]]), max, na.rm=TRUE))
+plot(time_bins(sim$ws), median(sim$ws)[["NS"]], type="l", lwd=2, col="blue", xlim=c(0, x.max), ylim=c(0, y.max), xlab="Time", ylab=expression(N(t)))
+lines(time_bins(sim$ws), median(sim$ws)[["NI"]], lwd=2, col="gold")
+lines(time_bins(sim$ws), median(sim$ws)[["NR"]],lwd=2, col="red")
+legend("topright", c("NS", "NI", "NR"),col=c("blue", "gold", "red"), lty=1)
+title("Watts Strogatz Game [beta=5, gamma=9, ntrials = 200]")
+
+x.max <- max(sapply(sapply(sim, time_bins), max))
+y.max <- 1.05 * max(sapply(sapply(sim, function(x) median(x)[["NR"]]), max, na.rm=TRUE))
+plot(time_bins(sim$nt), median(sim$nt)[["NS"]], type="l", lwd=2, col="blue", xlim=c(0, x.max), ylim=c(0, y.max), xlab="Time", ylab=expression(N(t)))
+lines(time_bins(sim$nt), median(sim$nt)[["NI"]], lwd=2, col="gold")
+lines(time_bins(sim$nt), median(sim$nt)[["NR"]],lwd=2, col="red")
+legend("topright", c("NS", "NI", "NR"),col=c("blue", "gold", "red"), lty=1)
+title("Peer to peer Network [beta=5, gamma=9, ntrials = 200]")
+
+```
+
+
+at least 3 different versions, for example:
+
+```{r}
+sim = lapply(gl, sir, beta=6, gamma=6, no.sim=500)
+
+x.max <- max(sapply(sapply(sim, time_bins), max))
+y.max <- 1.05 * max(sapply(sapply(sim, function(x) median(x)[["NI"]]), max, na.rm=TRUE))
+plot(time_bins(sim$er), median(sim$er)[["NI"]], type="l", lwd=2, col="blue", xlim=c(0, x.max), ylim=c(0, y.max), xlab="Time", ylab=expression(N[I](t)))
+lines(time_bins(sim$ba), median(sim$ba)[["NI"]], lwd=2, col="gold")
+lines(time_bins(sim$ws), median(sim$ws)[["NI"]],lwd=2, col="red")
+lines(time_bins(sim$nt), median(sim$nt)[["NI"]],lwd=2, col="green")
+legend("topright", c("ER", "BA", "WS", "NT"),col=c("blue", "gold", "red", "green"), lty=1)
+title("NI [beta=6, gamma=6, ntrials = 500]")
+
+x.max <- max(sapply(sapply(sim, time_bins), max))
+y.max <- 1.05 * max(sapply(sapply(sim, function(x) median(x)[["NS"]]), max, na.rm=TRUE))
+plot(time_bins(sim$er), median(sim$er)[["NS"]], type="l", lwd=2, col="blue", xlim=c(0, x.max), ylim=c(0, y.max), xlab="Time", ylab=expression(N[S](t)))
+lines(time_bins(sim$ba), median(sim$ba)[["NS"]], lwd=2, col="gold")
+lines(time_bins(sim$ws), median(sim$ws)[["NS"]],lwd=2, col="red")
+lines(time_bins(sim$nt), median(sim$nt)[["NS"]],lwd=2, col="green")
+legend("topright", c("ER", "BA", "WS", "NT"),col=c("blue", "gold", "red", "green"), lty=1)
+title("NS [beta=6, gamma=6, ntrials = 500]")
+
+
+x.max <- max(sapply(sapply(sim, time_bins), max))
+y.max <- 1.05 * max(sapply(sapply(sim, function(x) median(x)[["NR"]]), max, na.rm=TRUE))
+plot(time_bins(sim$er), median(sim$er)[["NR"]], type="l", lwd=2, col="blue", xlim=c(0, x.max), ylim=c(0, y.max), xlab="Time", ylab=expression(N[R](t)))
+lines(time_bins(sim$ba), median(sim$ba)[["NR"]], lwd=2, col="gold")
+lines(time_bins(sim$ws), median(sim$ws)[["NR"]],lwd=2, col="red")
+lines(time_bins(sim$nt), median(sim$nt)[["NR"]],lwd=2, col="green")
+legend("topright", c("ER", "BA", "WS", "NT"),col=c("blue", "gold", "red", "green"), lty=1)
+title("NR [beta=6, gamma=6, ntrials = 500]")
+
+x.max <- max(sapply(sapply(sim, time_bins), max))
+y.max <- 1.05 * max(sapply(sapply(sim, function(x) median(x)[["NR"]]), max, na.rm=TRUE))
+plot(time_bins(sim$er), median(sim$er)[["NS"]], type="l", lwd=2, col="blue", xlim=c(0, x.max), ylim=c(0, y.max), xlab="Time", ylab=expression(N(t)))
+lines(time_bins(sim$er), median(sim$er)[["NI"]], lwd=2, col="gold")
+lines(time_bins(sim$er), median(sim$er)[["NR"]],lwd=2, col="red")
+legend("topright", c("NS", "NI", "NR"),col=c("blue", "gold", "red"), lty=1)
+title("Erdos Reyni game [beta=6, gamma=6, ntrials = 500]")
+
+x.max <- max(sapply(sapply(sim, time_bins), max))
+y.max <- 1.05 * max(sapply(sapply(sim, function(x) median(x)[["NR"]]), max, na.rm=TRUE))
+plot(time_bins(sim$ba), median(sim$ba)[["NS"]], type="l", lwd=2, col="blue", xlim=c(0, x.max), ylim=c(0, y.max), xlab="Time", ylab=expression(N(t)))
+lines(time_bins(sim$ba), median(sim$ba)[["NI"]], lwd=2, col="gold")
+lines(time_bins(sim$ba), median(sim$ba)[["NR"]],lwd=2, col="red")
+legend("topright", c("NS", "NI", "NR"),col=c("blue", "gold", "red"), lty=1)
+title("Barabasi Game [beta=6, gamma=6, ntrials = 500]")
+
+x.max <- max(sapply(sapply(sim, time_bins), max))
+y.max <- 1.05 * max(sapply(sapply(sim, function(x) median(x)[["NR"]]), max, na.rm=TRUE))
+plot(time_bins(sim$ws), median(sim$ws)[["NS"]], type="l", lwd=2, col="blue", xlim=c(0, x.max), ylim=c(0, y.max), xlab="Time", ylab=expression(N(t)))
+lines(time_bins(sim$ws), median(sim$ws)[["NI"]], lwd=2, col="gold")
+lines(time_bins(sim$ws), median(sim$ws)[["NR"]],lwd=2, col="red")
+legend("topright", c("NS", "NI", "NR"),col=c("blue", "gold", "red"), lty=1)
+title("Watts Strogatz Game [beta=6, gamma=6, ntrials = 500]")
+
+x.max <- max(sapply(sapply(sim, time_bins), max))
+y.max <- 1.05 * max(sapply(sapply(sim, function(x) median(x)[["NR"]]), max, na.rm=TRUE))
+plot(time_bins(sim$nt), median(sim$nt)[["NS"]], type="l", lwd=2, col="blue", xlim=c(0, x.max), ylim=c(0, y.max), xlab="Time", ylab=expression(N(t)))
+lines(time_bins(sim$nt), median(sim$nt)[["NI"]], lwd=2, col="gold")
+lines(time_bins(sim$nt), median(sim$nt)[["NR"]],lwd=2, col="red")
+legend("topright", c("NS", "NI", "NR"),col=c("blue", "gold", "red"), lty=1)
+title("Peer to peer Network [beta=6, gamma=6, ntrials = 500]")
+```
+```{r}
+sim = lapply(gl, sir, beta=8, gamma=2, no.sim=1000)
+
+x.max <- max(sapply(sapply(sim, time_bins), max))
+y.max <- 1.05 * max(sapply(sapply(sim, function(x) median(x)[["NI"]]), max, na.rm=TRUE))
+plot(time_bins(sim$er), median(sim$er)[["NI"]], type="l", lwd=2, col="blue", xlim=c(0, x.max), ylim=c(0, y.max), xlab="Time", ylab=expression(N[I](t)))
+lines(time_bins(sim$ba), median(sim$ba)[["NI"]], lwd=2, col="gold")
+lines(time_bins(sim$ws), median(sim$ws)[["NI"]],lwd=2, col="red")
+lines(time_bins(sim$nt), median(sim$nt)[["NI"]],lwd=2, col="green")
+legend("topright", c("ER", "BA", "WS", "NT"),col=c("blue", "gold", "red", "green"), lty=1)
+title("NI [beta=8, gamma=2, ntrials = 1000]")
+
+x.max <- max(sapply(sapply(sim, time_bins), max))
+y.max <- 1.05 * max(sapply(sapply(sim, function(x) median(x)[["NS"]]), max, na.rm=TRUE))
+plot(time_bins(sim$er), median(sim$er)[["NS"]], type="l", lwd=2, col="blue", xlim=c(0, x.max), ylim=c(0, y.max), xlab="Time", ylab=expression(N[S](t)))
+lines(time_bins(sim$ba), median(sim$ba)[["NS"]], lwd=2, col="gold")
+lines(time_bins(sim$ws), median(sim$ws)[["NS"]],lwd=2, col="red")
+lines(time_bins(sim$nt), median(sim$nt)[["NS"]],lwd=2, col="green")
+legend("topright", c("ER", "BA", "WS", "NT"),col=c("blue", "gold", "red", "green"), lty=1)
+title("NS [beta=8, gamma=2, ntrials = 1000]")
+
+
+x.max <- max(sapply(sapply(sim, time_bins), max))
+y.max <- 1.05 * max(sapply(sapply(sim, function(x) median(x)[["NR"]]), max, na.rm=TRUE))
+plot(time_bins(sim$er), median(sim$er)[["NR"]], type="l", lwd=2, col="blue", xlim=c(0, x.max), ylim=c(0, y.max), xlab="Time", ylab=expression(N[R](t)))
+lines(time_bins(sim$ba), median(sim$ba)[["NR"]], lwd=2, col="gold")
+lines(time_bins(sim$ws), median(sim$ws)[["NR"]],lwd=2, col="red")
+lines(time_bins(sim$nt), median(sim$nt)[["NR"]],lwd=2, col="green")
+legend("topright", c("ER", "BA", "WS", "NT"),col=c("blue", "gold", "red", "green"), lty=1)
+title("NR [beta=8, gamma=2, ntrials = 1000]")
+
+x.max <- max(sapply(sapply(sim, time_bins), max))
+y.max <- 1.05 * max(sapply(sapply(sim, function(x) median(x)[["NR"]]), max, na.rm=TRUE))
+plot(time_bins(sim$er), median(sim$er)[["NS"]], type="l", lwd=2, col="blue", xlim=c(0, x.max), ylim=c(0, y.max), xlab="Time", ylab=expression(N(t)))
+lines(time_bins(sim$er), median(sim$er)[["NI"]], lwd=2, col="gold")
+lines(time_bins(sim$er), median(sim$er)[["NR"]],lwd=2, col="red")
+legend("topright", c("NS", "NI", "NR"),col=c("blue", "gold", "red"), lty=1)
+title("Erdos Reyni game [beta=8, gamma=2, ntrials = 1000]")
+
+x.max <- max(sapply(sapply(sim, time_bins), max))
+y.max <- 1.05 * max(sapply(sapply(sim, function(x) median(x)[["NR"]]), max, na.rm=TRUE))
+plot(time_bins(sim$ba), median(sim$ba)[["NS"]], type="l", lwd=2, col="blue", xlim=c(0, x.max), ylim=c(0, y.max), xlab="Time", ylab=expression(N(t)))
+lines(time_bins(sim$ba), median(sim$ba)[["NI"]], lwd=2, col="gold")
+lines(time_bins(sim$ba), median(sim$ba)[["NR"]],lwd=2, col="red")
+legend("topright", c("NS", "NI", "NR"),col=c("blue", "gold", "red"), lty=1)
+title("Barabasi Game [beta=8, gamma=2, ntrials = 1000]")
+
+x.max <- max(sapply(sapply(sim, time_bins), max))
+y.max <- 1.05 * max(sapply(sapply(sim, function(x) median(x)[["NR"]]), max, na.rm=TRUE))
+plot(time_bins(sim$ws), median(sim$ws)[["NS"]], type="l", lwd=2, col="blue", xlim=c(0, x.max), ylim=c(0, y.max), xlab="Time", ylab=expression(N(t)))
+lines(time_bins(sim$ws), median(sim$ws)[["NI"]], lwd=2, col="gold")
+lines(time_bins(sim$ws), median(sim$ws)[["NR"]],lwd=2, col="red")
+legend("topright", c("NS", "NI", "NR"),col=c("blue", "gold", "red"), lty=1)
+title("Watts Strogatz Game [beta=8, gamma=2, ntrials = 1000]")
+
+x.max <- max(sapply(sapply(sim, time_bins), max))
+y.max <- 1.05 * max(sapply(sapply(sim, function(x) median(x)[["NR"]]), max, na.rm=TRUE))
+plot(time_bins(sim$nt), median(sim$nt)[["NS"]], type="l", lwd=2, col="blue", xlim=c(0, x.max), ylim=c(0, y.max), xlab="Time", ylab=expression(N(t)))
+lines(time_bins(sim$nt), median(sim$nt)[["NI"]], lwd=2, col="gold")
+lines(time_bins(sim$nt), median(sim$nt)[["NR"]],lwd=2, col="red")
+legend("topright", c("NS", "NI", "NR"),col=c("blue", "gold", "red"), lty=1)
+title("Peer to peer Network [beta=8, gamma=2, ntrials = 1000]")
+```
+
+
+
+    
+*For some reason `beta` and `gamma` parameters should not be set below 0 and 1. Looks like they are somehow normilized during simulation.*
+
+You need to plot three values on the graphics: Number of infected, number of suseprible, number of recovered - all depends on time.
+As a result of this task, you need to provide 12 plots (one for each network with 3 diferent parameters) with explanation.
+
+Discussion
+
+Note: three graphs in the context of this discussion means [ER, Barabasi, PtP], excluding WS game!
+
+1)When $\beta < \gamma$: plots for Barabasi, Erdos-Reyni, Peer-to-peer networks with  shows similar characteristic- number of infected subjects increases at earlier times but then this number drops and gradually dies. In case of Barabasi game network this happens faster and with higher number of infected subjects compared to other two (ER, PtP). For peer-to-peer network suseptible does not drop to zero but stays stable after drop (there is still a risk).
+Compared to other three networks Watts Strogatz game network shows a peculiar behavior. Epidemics keeps constant over the given period. Perhaps we need to wait longer to observe some changes in its characteristics. Therefore in the next steps I have extented my experiment for a longer period. 
+
+2) When $\beta = \gamma$: The behavior of the graphs is similar to previous case. However we see a slight change in the behavior of Watts Strogatz game which shows us that we are on a right track. Since the simulation does not differ from previus one in the next step I also increased $\beta$ to $\gamma$ ratio. 
+
+3) When $\beta > \gamma$: Similar behavior of three graphs, change in values of the paramaters did not affect behavior of the epidemics. One thing is clear that the number of susceptible for infection stays constant in peer-to-peer network (perhaps forming some). However we can see at longer periods WS network shows familiar behaviour oberved in three graphs. Number of subjects infected slowly increases with a slow decrease in the number of susceptible subjects. But this number drops after some period. We can observe a kink around 16th unit of time which I think might be related to the topology of the WS network. 
